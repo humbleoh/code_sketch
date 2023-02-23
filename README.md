@@ -1,2 +1,2 @@
 # simple_cpp_constructs
-Simplified Implementation of C++'s Constructs
+Simplified implementation of C++'s constructs
