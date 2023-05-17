@@ -1,2 +1,2 @@
-# Code sketch
+# Code sketching
 Ad-hoc sketching
