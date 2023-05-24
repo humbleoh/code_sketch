@@ -50,9 +50,12 @@ public:
         m_callee.uc_stack.ss_size = stackSize;
         m_callee.uc_stack.ss_flags = 0;
         m_callee.uc_link = &m_caller;
-        makecontext(&m_callee, reinterpret_cast<void (*)()>(coroutine), 1, reinterpret_cast<void *>(this));
+        makecontext(&m_callee, reinterpret_cast<void (*)()>(coroutine), 1, reinterpret_cast<void *>(this)); //!! size of argument?
     }
 
+    //!! 还应该考虑resume操作和协程的对称性，两者可以方便我们编写异步操作。
+    //!! 比如，一个背景线程监听某个fd事件，若事件发生，该线程可以通过映射表
+    //!! 找出对应的协程，然后resume该协程。
     void yield()
     {
         swapcontext(&m_callee, &m_caller);
@@ -72,7 +75,7 @@ public:
 private:
     bool finished = false;
     ucontext_t m_caller;
-    ucontext_t m_callee;
+    ucontext_t m_callee; //!! memory overhead, should be thread-local storage
     std::unique_ptr<uint8_t[]> m_stack;
     std::function<void (SimpleCoroutine&)> m_task;
 
