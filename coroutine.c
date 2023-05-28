@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <ucontext.h>
 
-#define VML_MIN_STACK_SIZE  1024u
+#define VML_MIN_STACK_SIZE  4096u
 
 struct vml_coro_ctx;
 struct vml_coro_task;
