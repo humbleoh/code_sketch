@@ -10,6 +10,7 @@ public:
         : m_f { f }
     { }
 
+    // https://en.cppreference.com/w/cpp/language/as_if
     ~ScopedExit() noexcept
     {
         m_f();
