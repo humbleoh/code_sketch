@@ -15,7 +15,7 @@ public:
     { }
 
     // https://en.cppreference.com/w/cpp/language/as_if
-    ~ScopedExit() noexcept(noexcept(std::is_nothrow_invocable_v<Callable>))
+    ~ScopedExit() noexcept(std::is_nothrow_invocable_v<Callable>)
     {
         m_f();
     }
