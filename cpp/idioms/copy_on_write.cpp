@@ -5,8 +5,18 @@
 #include <type_traits>
 #include <mutex>
 
+template<typename T>
+struct TraitCopyable {
+    TraitCopyable()
+    {
+        // 可以使用trait类模板和CRTP，对子类进行约束。
+        static_assert(std::copyable<T>);
+    }
+};
+
 template<std::copyable T>
-class CopyOnWritePtr {
+class CopyOnWritePtr
+    : public TraitCopyable<CopyOnWritePtr<T>> {
     // 无法直接约束CopyOnWritePtr类模板为某个concept，只有在实例化时方可约束。
     //static_assert(std::copyable<CopyOnWritePtr<T>>);
     //static_assert(std::copyable<std::shared_ptr<T>>);
@@ -66,10 +76,10 @@ void CopyOnWritePtr<T>::detach()
 
 int main(int argc, const char *argv[])
 {
-    //CopyOnWritePtr<std::string> t0 = "hello world";
-    CopyOnWritePtr<std::string> t0;
-    //const CopyOnWritePtr<std::string> t1 = t0;
-    std::copyable auto t1 = t0; // 在这里约束CopyOnWritePtr<std::string>为std::copy对象。
+    CopyOnWritePtr<std::string> t0 = "hello world";
+    //CopyOnWritePtr<std::string> t0;
+    const CopyOnWritePtr<std::string> t1 = t0;
+    std::copyable auto t2 = t0; // 在这里约束CopyOnWritePtr<std::string>为std::copy对象。
     //t0.GetImmut()->at(0);
     //std::cout << "t0:" << t0.GetImmut() << " " << *t0.GetImmut() << std::endl;
     //std::cout << "t1:" << t1.GetImmut() << " " << *t1.GetImmut() << std::endl;
@@ -84,7 +94,7 @@ int main(int argc, const char *argv[])
     std::cout << "t0:" << t0.GetMut() << std::endl;
     std::cout << "t1:" << t1.GetImmut() << std::endl;
     
-    CopyOnWritePtr<std::string> t2;
-    //CopyOnWritePtr<std::mutex> t3;
+    CopyOnWritePtr<std::string> t3;
+    //CopyOnWritePtr<std::mutex> t4;
     return 0;
 }
