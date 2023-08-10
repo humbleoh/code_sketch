@@ -14,9 +14,27 @@ struct TraitCopyable {
     }
 };
 
+#define DEFINE_TRAIT_CLASS(trait) \
+    namespace { \
+        using namespace std; \
+        template<typename T> \
+        struct CheckTrait##trait { \
+            CheckTrait##trait() \
+            { \
+                static_assert(trait<T>); \
+            } \
+        }; \
+    }
+    
+#define ENFORCE_TRAIT(trait, t) \
+    CheckTrait##trait<t>
+
+DEFINE_TRAIT_CLASS(copyable);
+
 template<std::copyable T>
 class CopyOnWritePtr
-    : public TraitCopyable<CopyOnWritePtr<T>> {
+    //: public TraitCopyable<CopyOnWritePtr<T>> {
+    : public ENFORCE_TRAIT(copyable, CopyOnWritePtr<T>) {
     // 无法直接约束CopyOnWritePtr类模板为某个concept，只有在实例化时方可约束。
     //static_assert(std::copyable<CopyOnWritePtr<T>>);
     //static_assert(std::copyable<std::shared_ptr<T>>);
