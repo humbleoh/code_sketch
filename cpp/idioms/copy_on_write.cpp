@@ -35,12 +35,13 @@ template<std::copyable T>
 class CopyOnWritePtr
     //: public TraitCopyable<CopyOnWritePtr<T>> {
     : public ENFORCE_TRAIT(copyable, CopyOnWritePtr<T>) {
-    // 无法直接约束CopyOnWritePtr类模板为某个concept，只有在实例化时方可约束。
+    // 无法在这里直接约束CopyOnWritePtr类模板为某个concept，只有在实例化时方可约束。
+    // 因为CopyOnWritePtr这时是incomplete type
     //static_assert(std::copyable<CopyOnWritePtr<T>>);
     //static_assert(std::copyable<std::shared_ptr<T>>);
 public:
     /** */
-    CopyOnWritePtr() = default;
+    CopyOnWritePtr();
     /** */
     CopyOnWritePtr(const CopyOnWritePtr &robj) = default;
     /** */
@@ -63,6 +64,12 @@ private:
 private:
     std::shared_ptr<T> data_;
 };
+
+template<std::copyable T>
+CopyOnWritePtr<T>::CopyOnWritePtr()
+    : data_{std::make_shared<T>()}
+{
+}
 
 template<std::copyable T>
 template<typename... Ts>
@@ -92,6 +99,41 @@ void CopyOnWritePtr<T>::detach()
     }
 }
 
+class MyTestClassImpl {
+public:
+    void SetMember1(const std::string &val)
+    {
+        member1_ = val;
+    }
+    
+    const std::string &GetMember1() const
+    {
+        // 返回值类型可以是引用
+        return member1_;
+    }
+    
+private:
+    std::string member1_;
+};
+
+class MyTestClass {
+public:    
+    void SetMember1(const std::string &val)
+    {
+        data_.GetMut()->SetMember1(val);
+    }
+    
+    std::string GetMember1() const
+    {
+        // 返回值类型应该为纯值，返回成员对象的引用会造成对外不一致性，比如：caller
+        // 拿到了成员对象引用，但同时它又修改了其它成员对象，这里的修改会间接detach
+        // 内部的共享对象。这是，之前拿到的引用已经不属于当下所持有的共享对象。
+        return data_.GetImmut()->GetMember1();
+    }
+private:
+    CopyOnWritePtr<MyTestClassImpl> data_;
+};
+
 int main(int argc, const char *argv[])
 {
     CopyOnWritePtr<std::string> t0 = "hello world";
@@ -114,5 +156,14 @@ int main(int argc, const char *argv[])
     
     CopyOnWritePtr<std::string> t3;
     //CopyOnWritePtr<std::mutex> t4;
+    
+    MyTestClass mytest0;
+    mytest0.SetMember1("hello world");
+    MyTestClass mytest1 = mytest0;
+    std::cout << "mytest0: " << mytest0.GetMember1() << std::endl;
+    std::cout << "mytest1: " << mytest1.GetMember1() << std::endl;
+    mytest0.SetMember1("good answer");
+    std::cout << "mytest0: " << mytest0.GetMember1() << std::endl;
+    std::cout << "mytest1: " << mytest1.GetMember1() << std::endl;
     return 0;
 }
