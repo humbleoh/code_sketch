@@ -72,14 +72,17 @@ public:
     using return_type = std::result_of_t<Fn(Args...)>;
     // 这里使用 std::bind 是因为没法直接使用闭包捕获来完美转发；
     // 另一个方法是通过 reference wrapper 来实现捕获的完美转发。
-    // std::function 要求 callable 对象是 constructible 的，但
-    // std::packaged_task 并不满足 constructible 的要求，故通过
-    // std::shared_ptr 来满足 constructible 的限制。
+    // std::function 要求 Callable 对象是 CopyConstructible 的，
+    // 但 std::packaged_task 并不满足 CopyConstructible 的要求，
+    // 故通过 std::shared_ptr 来满足此的限制。
     auto ptask = std::make_shared<std::packaged_task<return_type()>>(
         std::bind(std::forward<Fn>(f), std::forward<Args>(args)...));
     auto future = ptask->get_future();
     auto lock = std::lock_guard {mutex_};
     tasks_.emplace([ptask]() { (*ptask)(); });
+    // 先通知，后释放锁。目的是保证公平性和避免优先级倒置，因为
+    // 互斥锁一般有较完善的阻塞线程调度算法，会按照线程优先级调
+    // 度，相同优先级按照 FIFO 调度。
     condvar_.notify_one();
     // 返回的 future 不能直接 get()，应当先 wait_for(timeout)。
     // 使用超时机制是因为工作是投递到队列中，该工作可能不会立刻执行。
