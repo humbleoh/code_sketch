@@ -64,6 +64,20 @@ public:
   void wait()
   {
   }
+  
+  /// Stop thread pool manager
+  /**
+   * 停止接收新工作
+   */
+  void terminate()
+  {
+  }
+
+  /// Cancel all pending jobs
+  /** */
+  void cancel()
+  {
+  }
 
   ///
   template<typename Fn, typename... Args>
@@ -83,6 +97,7 @@ public:
     // 先通知，后释放锁。目的是保证公平性和避免优先级倒置，因为
     // 互斥锁一般有较完善的阻塞线程调度算法，会按照线程优先级调
     // 度，相同优先级按照 FIFO 调度。
+    // 理想的调度是 LIFO
     condvar_.notify_one();
     // 返回的 future 不能直接 get()，应当先 wait_for(timeout)。
     // 使用超时机制是因为工作是投递到队列中，该工作可能不会立刻执行。
@@ -95,6 +110,9 @@ private:
   ///
   void scheduled_run(std::stop_token stop)
   {
+    // 有看到线程池实现把 stop_token 当作一个工作投递给线程。
+    // 这样做有问题因为这不是有效的广播行为，投递n次无法保证
+    // n个不同的线程都收到工作。
     while (!stop.stop_requested()) {
       auto lock = std::unique_lock {mutex_};
       condvar_.wait(lock, 
@@ -111,8 +129,13 @@ private:
   }
 
 private:
+  // 还有另一种做法是封装线程，然后维护两个队列，一个是idle线程
+  // 队列，另一个是busy线程队列。把队列中的工作直接投递到idle线程。
+  // 需要benchmark一番，但内存开销肯定比较大。
   std::vector<std::jthread> threads_;
   std::queue<std::function<void()>> tasks_;
+  // 这里有一个难点: 要如何解耦队列锁和条件变量?
+  // 要基于什么一般抽象?
   std::mutex mutex_;
   std::condition_variable condvar_;
 };
